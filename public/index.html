@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Attendance System</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      background: #f2f2f2;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+
+    .box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0px 0px 10px gray;
+    }
+
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      width: 250px;
+    }
+
+    button {
+      width: 120px;
+      cursor: pointer;
+      background: #007bff;
+      border: none;
+      color: white;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: white;
+    }
+
+    th, td {
+      border: 1px solid black;
+      padding: 10px;
+      text-align: center;
+    }
+
+    th {
+      background: black;
+      color: white;
+    }
+
+    .present {
+      background: green;
+      color: white;
+      border-radius: 5px;
+    }
+
+    .absent {
+      background: red;
+      color: white;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Student Attendance System</h1>
+
+  <!-- ADD STUDENT -->
+  <div class="box">
+    <h2>Add Student</h2>
+
+    <form id="studentForm">
+      <input type="text" id="name" placeholder="Student Name" required>
+      <input type="number" id="rollNo" placeholder="Roll Number" required>
+      <input type="text" id="className" placeholder="Class Name" required>
+      <br>
+      <button type="submit">Add</button>
+    </form>
+  </div>
+
+  <!-- MARK ATTENDANCE -->
+  <div class="box">
+    <h2>Mark Attendance</h2>
+
+    <label><b>Select Date:</b></label>
+    <input type="date" id="attendanceDate">
+
+    <h3>Student List</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Roll No</th>
+          <th>Name</th>
+          <th>Class</th>
+          <th>Attendance</th>
+        </tr>
+      </thead>
+
+      <tbody id="studentTable"></tbody>
+    </table>
+  </div>
+
+  <!-- VIEW ATTENDANCE -->
+  <div class="box">
+    <h2>View Attendance Report</h2>
+
+    <label><b>Select Date:</b></label>
+    <input type="date" id="reportDate">
+    <button onclick="loadAttendanceReport()">View</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Roll No</th>
+          <th>Name</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody id="reportTable"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const backendURL = window.location.origin;
+
+    // Load students when page loads
+    window.onload = () => {
+      loadStudents();
+    };
+
+    // Add Student Form
+    document.getElementById("studentForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const name = document.getElementById("name").value;
+      const rollNo = document.getElementById("rollNo").value;
+      const className = document.getElementById("className").value;
+
+      const res = await fetch(`${backendURL}/add-student`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, rollNo, className })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        alert("Error: " + data.error);
+      } else {
+        alert("Student Added Successfully!");
+        document.getElementById("studentForm").reset();
+        loadStudents();
+      }
+    });
+
+    // Load Students in Table
+    async function loadStudents() {
+      const res = await fetch(`${backendURL}/students`);
+      const students = await res.json();
+
+      const table = document.getElementById("studentTable");
+      table.innerHTML = "";
+
+      students.forEach(student => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${student.rollNo}</td>
+          <td>${student.name}</td>
+          <td>${student.className}</td>
+          <td>
+            <button class="present" onclick="markAttendance('${student._id}', 'Present')">Present</button>
+            <button class="absent" onclick="markAttendance('${student._id}', 'Absent')">Absent</button>
+          </td>
+        `;
+
+        table.appendChild(row);
+      });
+    }
+
+    // Mark Attendance
+    async function markAttendance(studentId, status) {
+      const date = document.getElementById("attendanceDate").value;
+
+      if (!date) {
+        alert("Please select date first!");
+        return;
+      }
+
+      const res = await fetch(`${backendURL}/mark-attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, date, status })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        alert("Error: " + data.error);
+      } else {
+        alert(status + " Marked Successfully!");
+      }
+    }
+
+    // Load Attendance Report
+    async function loadAttendanceReport() {
+      const date = document.getElementById("reportDate").value;
+
+      if (!date) {
+        alert("Please select date for report!");
+        return;
+      }
+
+      const res = await fetch(`${backendURL}/attendance/${date}`);
+      const records = await res.json();
+
+      const reportTable = document.getElementById("reportTable");
+      reportTable.innerHTML = "";
+
+      if (records.length === 0) {
+        reportTable.innerHTML = `<tr><td colspan="3">No Attendance Found</td></tr>`;
+        return;
+      }
+
+      records.forEach(record => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${record.studentId.rollNo}</td>
+          <td>${record.studentId.name}</td>
+          <td>${record.status}</td>
+        `;
+
+        reportTable.appendChild(row);
+      });
+    }
+  </script>
+
+</body>
+</html>
